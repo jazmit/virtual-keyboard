@@ -13,7 +13,7 @@ type alias Key = {
 
 -- ## Key construction functions
 key : String -> Key
-key s = { text = s, width = 1 }
+key s = { text = s, width = 2 }
 
 
 width : Int -> Key -> Key
@@ -21,22 +21,24 @@ width n key = {key | width <- n}
 
 
 toKeys : String -> List Key
-toKeys = S.split "" >> L.map (\s -> { text = s, width = 1})
+toKeys = S.split "" >> L.map (\s -> { text = s, width = 2})
 
 
 -- ## The keyboard raw data as a literal
 keys : List (List Key)
-keys = [
-    [key "tab"]              ++ toKeys "qwertyuiop" ++ [key "del"],
-    [key ""]                 ++ toKeys "asdfghjkl;" ++ [key "enter" |> width 2],
-    [key "shift" |> width 2] ++ toKeys "zxcvbnm,."  ++ [key "shift" |> width 2],
+keys = [                   toKeys "qwertyuiop" ++ [key "del"],
+    [key "" |> width 1] ++ toKeys "asdfghjkl"  ++ [key "enter" |> width 3],
+    [key "shift"]       ++ toKeys "zxcvbnm,."  ++ [key "shift" |> width 2],
     [key "space" |> width 10]
     ]
 
 
 -- # Rendering functions
 renderKey : Key -> Html
-renderKey v = div [class "key"] [text v.text]
+renderKey v = div
+        [ class "key",
+          style [("flex-grow", toString v.width)]]
+        [text v.text]
 
 
 renderRow : List Key -> Html
