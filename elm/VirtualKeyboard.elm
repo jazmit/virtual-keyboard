@@ -51,6 +51,7 @@ keys =
 taps : Mailbox Key
 taps = mailbox nullKey
 
+-- TODO: make one isShift function, and use a signal delay to generate wasShift
 isShift : Signal Bool
 isShift = (\key -> key.keycode == shift.keycode) <~ taps.signal
 
