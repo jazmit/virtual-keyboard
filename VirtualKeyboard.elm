@@ -22,6 +22,13 @@ nullKey = {
     keycode = 0
     }
 
+shift : Key
+shift = {
+    display = "shift",
+    width = 2,
+    keycode = 16
+    }
+
 -- ## The keyboard raw data as a literal
 keys : List (List Key)
 keys =
@@ -35,14 +42,31 @@ keys =
         toKeys = S.split "" >> L.map key
     in [                      toKeys "qwertyuiop" ++ [key "del"],
        [key "" |> width 1] ++ toKeys "asdfghjkl"  ++ [key "enter" |> width 3],
-       [key "shift"]       ++ toKeys "zxcvbnm,."  ++ [key "shift"],
-       [key "space" |> width 10]
+       [shift]             ++ toKeys "zxcvbnm,."  ++ [shift],
+       [{ display = "Space", width = 2, keycode = 32 }]
        ]
 
 
 -- ## Click handling
 taps : Mailbox Key
 taps = mailbox nullKey
+
+isShift : Signal Bool
+isShift = (\key -> key.keycode == shift.keycode) <~ taps.signal
+
+wasShift : Signal Bool
+wasShift =
+    let isShift wShift oldKey = oldKey == shift && not wShift
+        step key (wShift, oldKey) = (isShift wShift oldKey, key)
+        stateSig = foldp step (False, nullKey) taps.signal
+    in  (\(wShift, _) -> wShift) <~ stateSig
+
+keyPresses : Signal Char
+keyPresses =
+    let keyPress isShift key = Char.fromCode <|
+            key.keycode - if isShift then 32 else 0
+    in  keyPress <~ wasShift ~ taps.signal
+
 
 -- # Send keycode out to JS
 -- TODO: move to JS module
@@ -51,30 +75,30 @@ taps = mailbox nullKey
 
 
 -- ## Rendering functions
-renderKey : Key -> Html
-renderKey v = div
+renderKey : Bool -> Key -> Html
+renderKey isShift v = div
         [ class "key",
           style [("flex-grow", toString v.width)],
           onClick taps.address v]
-        [text v.display]
+        [ text <| if isShift then (S.toUpper v.display) else v.display ]
 
 
-renderRow : List Key -> Html
-renderRow row = div [class "row"] <| L.map renderKey row
+renderRow : Bool -> List Key -> Html
+renderRow isShift row = div [class "row"] <| L.map (renderKey isShift) row
 
 
-renderKeyboard : Html
-renderKeyboard = div [class "keyboard"] <|
-    L.map renderRow keys
+renderKeyboard : Bool -> Html
+renderKeyboard isShift = div [class "keyboard"] <|
+    L.map (renderRow isShift) keys
 
 
 main : Signal Html
 main =
-    let renderAll key =
+    let renderAll isShift key =
         div [] [
             text (toString key),
-            renderKeyboard
+            renderKeyboard isShift
             ]
-    in  renderAll <~ taps.signal
+    in  renderAll <~ isShift ~ keyPresses
 
 
