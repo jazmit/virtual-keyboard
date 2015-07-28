@@ -29,6 +29,20 @@ shift = {
     keycode = 16
     }
 
+backspace : Key
+backspace = {
+    display = "del",
+    width = 2,
+    keycode = 8
+    }
+
+enter : Key
+enter = {
+    display = "Enter",
+    width = 3,
+    keycode = 13
+    }
+
 -- ## The keyboard raw data as a literal
 keys : List (List Key)
 keys =
@@ -37,12 +51,12 @@ keys =
                 Just (char, "") -> Char.toCode char
                 _ -> nullKey.keycode
         key s = { display = s, width = 2, keycode = getKeyCode s }
-        width w key   = { key | width <- w }
         keycode k key = { key | keycode <- k }
         toKeys = S.split "" >> L.map key
-    in [                      toKeys "qwertyuiop" ++ [key "del"],
-       [key "" |> width 1] ++ toKeys "asdfghjkl"  ++ [key "enter" |> width 3],
-       [shift]             ++ toKeys "zxcvbnm,."  ++ [shift],
+        spacer = { display = "", width = 1, keycode = nullKey.keycode }
+    in [           toKeys "qwertyuiop" ++ [backspace],
+       [spacer] ++ toKeys "asdfghjkl"  ++ [enter],
+       [shift]  ++ toKeys "zxcvbnm,."  ++ [shift],
        [{ display = "Space", width = 2, keycode = 32 }]
        ]
 
@@ -50,6 +64,7 @@ keys =
 -- ## Click handling
 taps : Mailbox Key
 taps = mailbox nullKey
+
 
 -- TODO: make one isShift function, and use a signal delay to generate wasShift
 isShift : Signal Bool
@@ -62,17 +77,11 @@ wasShift =
         stateSig = foldp step (False, nullKey) taps.signal
     in  (\(wShift, _) -> wShift) <~ stateSig
 
-keyPresses : Signal Char
+
+keyPresses : Signal Int
 keyPresses =
-    let keyPress isShift key = Char.fromCode <|
-            key.keycode - if isShift then 32 else 0
+    let keyPress isShift key = key.keycode - if isShift then 32 else 0
     in  keyPress <~ wasShift ~ taps.signal
-
-
--- # Send keycode out to JS
--- TODO: move to JS module
---port keypresses : Signal Int
---port keypresses = .keycode <~ taps.signal
 
 
 -- ## Rendering functions
