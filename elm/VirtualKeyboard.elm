@@ -7,7 +7,7 @@ import List as L exposing((::))
 import String as S
 import Signal exposing (..)
 import Char
-
+import Json.Decode
 
 type alias Key = {
     display  : String,
@@ -83,13 +83,15 @@ keyPresses =
     let keyPress isShift key = key.keycode - if isShift then 32 else 0
     in  keyPress <~ wasShift ~ taps.signal
 
+onTouchStart : Signal.Address a -> a -> Attribute
+onTouchStart addr msg =
+  onWithOptions "touchstart" (Options True True) Json.Decode.value (\_ -> Signal.message addr msg)
 
 -- ## Rendering functions
 renderKey : Bool -> Key -> Html
 renderKey isShift v = div
-        [ class "key",
-          style [("flex-grow", toString v.width)],
-          onClick taps.address v]
+        [ class ("key grow-" ++ toString v.width),
+          onTouchStart taps.address v]
         [ text <| if isShift then (S.toUpper v.display) else v.display ]
 
 
