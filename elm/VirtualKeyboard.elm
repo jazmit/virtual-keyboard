@@ -24,21 +24,21 @@ nullKey = {
 
 shift : Key
 shift = {
-    display = "shift",
+    display = "⇑",
     width = 2,
     keycode = 16
     }
 
 backspace : Key
 backspace = {
-    display = "del",
+    display = "⇦",
     width = 2,
     keycode = 8
     }
 
 enter : Key
 enter = {
-    display = "Enter",
+    display = "↵",
     width = 3,
     keycode = 13
     }
@@ -57,7 +57,7 @@ keys =
     in [           toKeys "qwertyuiop" ++ [backspace],
        [spacer] ++ toKeys "asdfghjkl"  ++ [enter],
        [shift]  ++ toKeys "zxcvbnm,."  ++ [shift],
-       [{ display = "Space", width = 2, keycode = 32 }]
+       [{ display = "", width = 2, keycode = 32 }]
        ]
 
 
