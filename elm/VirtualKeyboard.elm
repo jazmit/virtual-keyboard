@@ -1,4 +1,4 @@
-module VirtualKeyboard (Key, render, keyPresses) where
+module VirtualKeyboard where -- (Key, render, keyPresses) where
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -52,20 +52,17 @@ enter = {
 
 
 -- ## The keyboard raw data as a literal
-keys : List (List Key)
-keys =
-    let getKeyCode s = 
-            case S.uncons s of
-                Just (char, "") -> Char.toCode char
-                _ -> nullKey.keycode
-        key s = { display = s, width = 2, keycode = getKeyCode s }
-        keycode k key = { key | keycode <- k }
-        toKeys = S.split "" >> L.map key
+keys : Bool -> List (List Key)
+keys isShift =
+    let alphaKey s = key s (Char.toUpper s)
+        key l u    = let c = if isShift then u else l
+                     in  { display = S.fromChar c, width = 2, keycode = Char.toCode c } 
+        toKeys = S.toList >> L.map alphaKey
         spacer = { display = "", width = 1, keycode = nullKey.keycode }
     in [           toKeys "qwertyuiop" ++ [backspace],
        [spacer] ++ toKeys "asdfghjkl"  ++ [enter],
-       [shift]  ++ toKeys "zxcvbnm,."  ++ [shift],
-       [{ display = "", width = 2, keycode = 32 }]
+       [shift]  ++ toKeys "zxcvbnm" ++ [key ',' '?', key '.' '!', shift],
+       [{ display = "Space", width = 2, keycode = 32 }]
        ]
 
 
@@ -74,23 +71,12 @@ taps : Mailbox Key
 taps = mailbox nullKey
 
 
--- TODO: make one isShift function, and use a signal delay to generate wasShift
 isShift : Signal Bool
 isShift = (\key -> key.keycode == shift.keycode) <~ taps.signal
 
 
-wasShift : Signal Bool
-wasShift =
-    let isShift wShift oldKey = oldKey == shift && not wShift
-        step key (wShift, oldKey) = (isShift wShift oldKey, key)
-        stateSig = foldp step (False, nullKey) taps.signal
-    in  (\(wShift, _) -> wShift) <~ stateSig
-
-
 keyPresses : Signal KeyCode
-keyPresses =
-    let keyPress isShift key = key.keycode - if isShift then 32 else 0
-    in  keyPress <~ wasShift ~ taps.signal
+keyPresses = map .keycode taps.signal
 
 
 onTouchStart : Signal.Address a -> a -> Attribute
@@ -99,30 +85,34 @@ onTouchStart addr msg =
 
 
 -- ## Rendering functions
-renderKey : Bool -> Key -> Html
-renderKey isShift v = div
+renderKey : Key -> Html
+renderKey v = div
         [ class ("key grow-" ++ toString v.width),
+          onClick taps.address v,
           onTouchStart taps.address v]
-        [ text <| if isShift then (S.toUpper v.display) else v.display ]
+        [ text v.display ]
 
 
-renderRow : Bool -> List Key -> Html
-renderRow isShift row = div [class "row"] <| L.map (renderKey isShift) row
+renderRow :  List Key -> Html
+renderRow row = div [class "row"] <| L.map renderKey row
 
 
 renderKeyboard : List Key -> Bool -> Html
 renderKeyboard shortcuts isShift = div [class "keyboard"] <|
-    L.map (renderRow isShift) (shortcuts :: keys)
+    L.map renderRow (shortcuts :: keys isShift)
 
 
 -- Renders the keyboard, provided with a way to lookup shortcuts such
 -- as diacritical marks
 render : (KeyCode -> List Key) -> Signal Html
-render lookup =
-    let doRender keycode = lookup keycode |> renderKeyboard
-    in  doRender <~ keyPresses ~ isShift
+render lookup = (lookup >> renderKeyboard) <~ keyPresses ~ isShift
 
 
 -- Simple main for running the keyboard without JS integration
 main : Signal Html
-main = render (\_ -> [])
+main =
+    let debugRender mainHtml keypress = div [] [
+            text (toString keypress),
+            mainHtml
+        ]
+    in  debugRender <~ render (\_ -> []) ~ map Char.fromCode keyPresses
