@@ -34,34 +34,20 @@ shift = {
     keycode = 16
     }
 
-
-backspace : Key
-backspace = {
-    display = "⇦",
-    width = 2,
-    keycode = 8
-    }
-
-
-enter : Key
-enter = {
-    display = "↵",
-    width = 3,
-    keycode = 13
-    }
-
-
--- ## The keyboard raw data as a literal
-keys : Bool -> List (List Key)
-keys isShift =
-    let alphaKey s = key s (Char.toUpper s)
-        key l u    = let c = if isShift then u else l
-                     in  { display = S.fromChar c, width = 2, keycode = Char.toCode c } 
-        toKeys = S.toList >> L.map alphaKey
-        spacer = { display = "", width = 1, keycode = nullKey.keycode }
-    in [           toKeys "qwertyuiop" ++ [backspace],
-       [spacer] ++ toKeys "asdfghjkl"  ++ [enter],
-       [shift]  ++ toKeys "zxcvbnm" ++ [key ',' '?', key '.' '!', shift],
+-- ## Generates the raw keyboard data
+keyboard : Bool -> List (List Key)
+keyboard isShift =
+    let alphaKey s = key (Char.toLower s) (Char.toUpper s)
+        alphaKeys  = S.toList >> L.map alphaKey
+        key l u    =
+            let c = if isShift then u else l
+            in  { display = S.fromChar c, width = 2, keycode = Char.toCode c } 
+        spacer    = { display = "",  width = 1, keycode = nullKey.keycode }
+        enter     = { display = "↵", width = 3, keycode = 13 }
+        backspace = { display = "⇦", width = 2, keycode = 8 }
+    in [           alphaKeys "qwertyuiop" ++ [backspace],
+       [spacer] ++ alphaKeys "asdfghjkl"  ++ [enter],
+       [shift]  ++ alphaKeys "zxcvbnm" ++ [key ',' '!', key '.' '?', shift],
        [{ display = "Space", width = 2, keycode = 32 }]
        ]
 
@@ -99,7 +85,7 @@ renderRow row = div [class "row"] <| L.map renderKey row
 
 renderKeyboard : List Key -> Bool -> Html
 renderKeyboard shortcuts isShift = div [class "keyboard"] <|
-    L.map renderRow (shortcuts :: keys isShift)
+    L.map renderRow (shortcuts :: keyboard isShift)
 
 
 -- Renders the keyboard, provided with a way to lookup shortcuts such
