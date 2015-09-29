@@ -10,6 +10,7 @@ import Dict exposing (Dict)
 import Signal exposing (..)
 import Char exposing (KeyCode)
 import Json.Decode
+import Time exposing (..)
 
 
 type alias Key = {
@@ -71,27 +72,31 @@ onTouchStart addr msg =
 
 
 -- ## Rendering functions
-renderKey : Key -> Html
-renderKey v = div
-        [ class ("key grow-" ++ toString v.width),
-          onClick taps.address v,
-          onTouchStart taps.address v]
-        [ text v.display ]
+renderKeyboard : List (List Key) -> Html
+renderKeyboard =
+    let renderKey v = div
+                [ class ("key grow-" ++ toString v.width),
+                onClick taps.address v,
+                onTouchStart taps.address v]
+                [ text v.display ]
+        renderRow = div [class "row"] << L.map renderKey
+    in  div [class "keyboard"] << L.map renderRow
 
 
-renderRow :  List Key -> Html
-renderRow row = div [class "row"] <| L.map renderKey row
-
-
-renderKeyboard : List Key -> Bool -> Html
-renderKeyboard shortcuts isShift = div [class "keyboard"] <|
-    L.map renderRow (shortcuts :: keyboard isShift)
-
+-- Produce the keyboard as a List of List of Keys, including accent shortcuts where
+-- appropriate
+getKeyboard : Bool -> (KeyCode -> List Key) -> Bool -> KeyCode -> List (List Key)
+getKeyboard isTouch lookup isShift key =
+    let shortcuts = lookup key
+     in shortcuts :: if isTouch then keyboard isShift else []
+    
 
 -- Renders the keyboard, provided with a way to lookup shortcuts such
 -- as diacritical marks
-render : (KeyCode -> List Key) -> Signal Html
-render lookup = (lookup >> renderKeyboard) <~ keyPresses ~ isShift
+render : Bool -> Signal KeyCode -> (KeyCode -> List Key) -> Signal Html
+render isTouch externalKeyPresses lookup =
+    let renderFull shiftKey = renderKeyboard << getKeyboard isTouch lookup shiftKey
+     in renderFull <~ isShift ~ (merge keyPresses externalKeyPresses)
 
 
 -- Simple main for running the keyboard without JS integration
@@ -101,4 +106,11 @@ main =
             text (toString keypress),
             mainHtml
         ]
-    in  debugRender <~ render (\_ -> []) ~ map Char.fromCode keyPresses
+        sillyKey = {
+            display = "Bla",
+            width = 2,
+            keycode = 66
+        }
+        externalKeyPresses = (\_ -> 65) <~ every second
+        keyLookup keyCode = if keyCode == 65 then [sillyKey] else []
+    in  debugRender <~ render True externalKeyPresses keyLookup ~ map Char.fromCode keyPresses
