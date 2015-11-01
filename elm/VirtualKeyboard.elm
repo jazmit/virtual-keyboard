@@ -48,7 +48,7 @@ keyboard isShift =
         backspace = { display = "⇦", width = 2, keycode = 8 }
     in [           alphaKeys "qwertyuiop" ++ [backspace],
        [spacer] ++ alphaKeys "asdfghjkl"  ++ [enter],
-       [shift]  ++ alphaKeys "zxcvbnm" ++ [key ',' '!', key '.' '?', shift],
+       [shift]  ++ alphaKeys "zxcvbnm" ++ [key ',' '\'', key '.' '?', shift],
        [{ display = "Space", width = 2, keycode = 32 }]
        ]
 
